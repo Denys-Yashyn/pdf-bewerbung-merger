@@ -1,0 +1,18 @@
+{
+  "directories": {
+    "input_dir": "input",
+    "base_docs": "input/base_docs",
+    "anschreiben": "input/anschreiben",
+    "output": "output"
+  },
+  "templates": {
+    "anschreiben": "Anschreiben {company}.pdf",
+    "output_file": "Bewerbung {username} {company}.pdf"
+  },
+  "base_files": [
+    "Lebenslauf Muster.pdf",
+    "Arbeitszeugnis Muster.pdf",
+    "Abschlusszeugnis Muster.pdf",
+    "Zertifikat Muster.pdf"
+  ]
+}
