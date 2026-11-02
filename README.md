@@ -47,7 +47,7 @@ pdf-bewerbung-merger/
 
 1. **Repository klonen:**
    ```bash
-   git clone [https://github.com/Denys-Yashyn/pdf-bewerbung-merger.git](https://github.com/Denys-Yashyn/pdf-bewerbung-merger.git)
+   git clone https://github.com/Denys-Yashyn/pdf-bewerbung-merger.git
    cd pdf-bewerbung-merger
    ```
 
