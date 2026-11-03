@@ -4,13 +4,13 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, Date, DateT
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения из файла .env
+# Umgebungsvariablen aus der .env-Datei laden
 load_dotenv()
 
-# Базовый класс, от которого будут наследоваться наши таблицы
+# Basisklasse, von der unsere Tabellen erben
 Base = declarative_base()
 
-# 1. Python-эквивалент твоего ENUM из PostgreSQL
+# 1. Python-Äquivalent zum PostgreSQL ENUM
 class ApplicationStatus(enum.Enum):
     PLANNED = 'PLANNED'
     APPLIED = 'APPLIED'
@@ -18,7 +18,7 @@ class ApplicationStatus(enum.Enum):
     REJECTED = 'REJECTED'
     OFFER = 'OFFER'
 
-# 2. Модель компании (соответствует таблице companies)
+# 2. Unternehmensmodell (entspricht der Tabelle 'companies')
 class Company(Base):
     __tablename__ = 'companies'
 
@@ -28,14 +28,14 @@ class Company(Base):
     website = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Двусторонняя связь (одна компания -> много откликов)
+    # Bidirektionale Beziehung (Ein Unternehmen -> Viele Bewerbungen)
     applications = relationship("Application", back_populates="company", cascade="all, delete-orphan")
 
-    # Магический метод для красивого вывода при принте (например: <Company(name='Telekom', city='Erfurt')>)
+    # Magische Methode für eine saubere Konsolenausgabe (z. B. <Company(name='Telekom', city='Erfurt')>)
     def __repr__(self):
         return f"<Company(name='{self.name}', city='{self.city}')>"
 
-# 3. Модель отклика (соответствует таблице applications)
+# 3. Bewerbungsmodell (entspricht der Tabelle 'applications')
 class Application(Base):
     __tablename__ = 'applications'
 
@@ -43,42 +43,40 @@ class Application(Base):
     company_id = Column(Integer, ForeignKey('companies.id', ondelete='CASCADE'), nullable=False)
     position_title = Column(String(255), nullable=False)
     
-    # Используем созданный Enum
+    # Verwendet das erstellte Enum
     status = Column(Enum(ApplicationStatus), default=ApplicationStatus.APPLIED)
     applied_date = Column(Date, default=date.today)
     document_path = Column(Text)
     notes = Column(Text)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Обратная связь с классом Company
+    # Rückbeziehung zur Company-Klasse
     company = relationship("Company", back_populates="applications")
 
     def __repr__(self):
         return f"<Application(position='{self.position_title}', status='{self.status.name}')>"
 
-load_dotenv()
-
-# Достаем данные для подключения (с дефолтными значениями на крайний случай)
+# Verbindungsdaten abrufen
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
-# Формируем строку подключения (Connection String)
+# Verbindungszeichenfolge (Connection String) erstellen
 SQLALCHEMY_DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Создаем 'движок' (engine) — он отвечает за физическое соединение с PostgreSQL
+# Engine erstellen – verantwortlich für die physische Verbindung zu PostgreSQL
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-# Создаем фабрику сессий (SessionLocal) — через нее мы будем отправлять запросы
+# Session-Fabrik erstellen (SessionLocal) – darüber senden wir unsere Datenbankabfragen
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
     """
-    Генератор сессий. 
-    Он аккуратно открывает соединение с базой и ГАРАНТИРОВАННО закрывает его 
-    после завершения операции (даже если произойдет ошибка), чтобы не "повесить" базу.
+    Session-Generator. 
+    Öffnet eine Datenbankverbindung und schließt sie GARANTIERT 
+    nach Abschluss der Operation (selbst bei Fehlern), um die Datenbank nicht zu blockieren.
     """
     db = SessionLocal()
     try:
@@ -87,23 +85,23 @@ def get_db():
         db.close()
 
 def save_application_to_db(company_name: str, position_title: str, pdf_path: str):
-    """Сохраняет сгенерированный бевербунг в базу данных PostgreSQL."""
-    # Получаем сессию из генератора
+    """Speichert die generierte Bewerbung in der PostgreSQL-Datenbank."""
+    # Session aus dem Generator abrufen
     db_generator = get_db()
     db = next(db_generator)
     
     try:
-        # 1. Ищем компанию в базе
+        # 1. Unternehmen in der Datenbank suchen
         company = db.query(Company).filter(Company.name == company_name).first()
         
-        # Если компании еще нет, создаем новую
+        # Falls das Unternehmen noch nicht existiert, ein neues anlegen
         if not company:
             company = Company(name=company_name)
             db.add(company)
             db.commit()
-            db.refresh(company) # Обновляем объект, чтобы получить его сгенерированный ID
+            db.refresh(company) # Objekt aktualisieren, um die generierte ID zu erhalten
         
-        # 2. Создаем запись об отклике (Application)
+        # 2. Bewerbungsdatensatz erstellen (Application)
         new_application = Application(
             company_id=company.id,
             position_title=position_title,
@@ -115,7 +113,7 @@ def save_application_to_db(company_name: str, position_title: str, pdf_path: str
         print(f"💾 Erfolgreich in der Datenbank gespeichert: {position_title} bei {company_name}")
         
     except Exception as e:
-        db.rollback() # Откатываем транзакцию в случае ошибки, чтобы не сломать базу
+        db.rollback() # Transaktion im Fehlerfall rückgängig machen (Rollback), um die DB zu schützen
         print(f"⚠️ Datenbankfehler: {e}")
     finally:
         db.close()
