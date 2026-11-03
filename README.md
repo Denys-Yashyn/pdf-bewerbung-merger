@@ -20,8 +20,10 @@ Wer viele Bewerbungen schreibt, kennt das Problem: Für jede Firma muss ein indi
 * **100% Plattformübergreifend:** Funktioniert dank `pathlib` nahtlos unter Linux, macOS und Windows.
 * **Vollautomatisches Setup:** Mitgelieferte Start-Skripte (`run.sh` und `run.bat`) richten automatisch eine isolierte virtuelle Umgebung (`.venv`) ein und installieren alle benötigten Abhängigkeiten im Hintergrund.
 * **Out-of-the-Box Demo:** Enthält fertige Muster-Dokumente zum sofortigen Testen nach dem Klonen.
+* **Optionales Datenbank-Tracking (Neu):** Speichert automatisch den Firmennamen, die Position, das Datum und den Dateipfad deiner generierten Bewerbungen in einer PostgreSQL-Datenbank (via SQLAlchemy ORM).
 
 ## 📁 Projektstruktur
+
 ```text
 pdf-bewerbung-merger/
 ├── input/
@@ -32,16 +34,19 @@ pdf-bewerbung-merger/
 │       ├── Arbeitszeugnis Muster.pdf
 │       ├── Abschlusszeugnis Muster.pdf
 │       └── Zertifikat Muster.pdf
-├── output/                  # Hier landen die fertigen PDFs
-├── config.json              # Zentrale Konfiguration für Pfade und Dateinamen
-├── main.py                  # Hauptskript (Python)
-├── requirements.txt         # Python-Abhängigkeiten (pypdf)
-├── run.sh                   # Starter-Skript für Linux & macOS
-└── run.bat                  # Starter-Skript für Windows
+├── output/                   # Hier landen die fertigen PDFs
+├── .env                      # Datenbank-Zugangsdaten (NICHT in Git hochladen!)
+├── config.json               # Zentrale Konfiguration für Pfade und Dateinamen
+├── database.py               # Datenbankmodelle (SQLAlchemy) und Logik
+├── main.py                   # Hauptskript (Python)
+├── requirements.txt          # Python-Abhängigkeiten (pypdf, sqlalchemy, psycopg2-binary)
+├── run.sh                    # Starter-Skript für Linux & macOS
+└── run.bat                   # Starter-Skript für Windows
 ```
 
 ## ⚙️ Voraussetzungen
 * **Python 3.x** muss auf dem System installiert sein.
+* **PostgreSQL** (Nur notwendig, wenn du das relationale Datenbank-Tracking nutzen möchtest).
 
 ## 🚀 Installation & Schnellstart (Mit Muster-Dateien)
 
@@ -63,9 +68,24 @@ pdf-bewerbung-merger/
      .\run.bat "Muster"
      ```
 
-Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf`, fügt die Muster-Dokumente zusammen und speichert das Ergebnis unter `output/Bewerbung_<DeinSystemname>_Muster.pdf`.
+Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf` und die DB-Treiber, fügt die Muster-Dokumente zusammen und speichert das Ergebnis unter `output/Bewerbung_<DeinSystemname>_Muster.pdf`.
 
 *(Hinweis: Wenn der Firmenname Leerzeichen enthält, setze ihn einfach in Anführungszeichen, z. B. `./run.sh "Deutsche Bahn"`).*
+
+## 🗄️ Datenbank-Tracking einrichten (Optional)
+
+Wenn du deine Bewerbungshistorie speichern möchtest, kannst du die PostgreSQL-Integration nutzen. 
+
+1. **`.env` Datei erstellen:** Erstelle im Hauptverzeichnis eine Datei namens `.env` (diese wird von Git ignoriert) und füge deine Zugangsdaten ein:
+   ```env
+   DB_USER=postgres
+   DB_PASSWORD=dein_passwort
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=bewerbungen
+   ```
+2. **Datenbank anlegen:** Stelle sicher, dass du auf deinem lokalen PostgreSQL-Server eine leere Datenbank namens `bewerbungen` erstellt hast. 
+3. **Nutzung:** Das Skript legt die Tabellen beim ersten Start automatisch an. Bei jeder erfolgreichen PDF-Generierung wird nun ein neuer Datensatz mit dem Status `APPLIED` gespeichert. Du kannst beim Ausführen optional die genaue Position übergeben: `./run.sh "Muster" -p "Fachinformatiker"`.
 
 ## 🛠️ Eigene Dokumente einrichten (`config.json`)
 
