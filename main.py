@@ -114,8 +114,12 @@ def main():
         
             print(f"✅ Success! File saved: {final_output_path}")
         
-        # 6. Save the application details to the database
-            save_application_to_db(company_name, position_title, final_output_path.resolve())
+        # 6. Save the application details to the database  
+            if config.get("use_database", False):
+                from database import save_application_to_db
+                save_application_to_db(company_name, position_title, final_output_path.resolve())
+            else:
+                print("ℹ️ Datenbank-Tracking ist in config.json deaktiviert. Überspringe Speicherung.")
         
         except Exception as e:
             print(f"❌ Process failed due to an error:\n{e}")
