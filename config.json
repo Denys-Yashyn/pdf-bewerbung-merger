@@ -1,6 +1,6 @@
 {
+  "use_database": false,
   "directories": {
-    "input_dir": "input",
     "base_docs": "input/base_docs",
     "anschreiben": "input/anschreiben",
     "output": "output"
