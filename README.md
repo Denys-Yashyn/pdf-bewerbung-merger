@@ -27,21 +27,17 @@ Wer viele Bewerbungen schreibt, kennt das Problem: Für jede Firma muss ein indi
 ```text
 pdf-bewerbung-merger/
 ├── input/
-│   ├── anschreiben/
-│   │   └── Anschreiben Muster.pdf
-│   └── base_docs/
-│       ├── Lebenslauf Muster.pdf
-│       ├── Arbeitszeugnis Muster.pdf
-│       ├── Abschlusszeugnis Muster.pdf
-│       └── Zertifikat Muster.pdf
+│   ├── anschreiben/          # Hierher kommen die Anschreiben (Standard-Watch-Ordner)
+│   └── base_docs/            # Statische Dokumente (Lebenslauf, Zeugnisse)
 ├── output/                   # Hier landen die fertigen PDFs
 ├── .env                      # Datenbank-Zugangsdaten (NICHT in Git hochladen!)
-├── config.json               # Zentrale Konfiguration für Pfade und Dateinamen
+├── config.json               # Zentrale Konfiguration (Pfade, Dateinamen, DB-Toggle)
 ├── database.py               # Datenbankmodelle (SQLAlchemy) und Logik
-├── main.py                   # Hauptskript (Python)
-├── requirements.txt          # Python-Abhängigkeiten (pypdf, sqlalchemy, psycopg2-binary)
-├── run.sh                    # Starter-Skript für Linux & macOS
-└── run.bat                   # Starter-Skript für Windows
+├── main.py                   # Hauptskript für den manuellen Merge (Python)
+├── watcher.py                # Hintergrund-Daemon für vollautomatischen Merge (Neu)
+├── requirements.txt          # Python-Abhängigkeiten (pypdf, watchdog, sqlalchemy, psycopg2-binary)
+├── run.sh / run.bat          # Starter-Skripte für manuellen Merge
+└── watch.sh / watch.bat      # Starter-Skripte für den Hintergrund-Watcher (Neu)
 ```
 
 ## ⚙️ Voraussetzungen
@@ -72,6 +68,20 @@ Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf` und 
 
 *(Hinweis: Wenn der Firmenname Leerzeichen enthält, setze ihn einfach in Anführungszeichen, z. B. `./run.sh "Deutsche Bahn"`).*
 
+## 👁️ Automatischer Hintergrund-Modus (Watcher)
+Du möchtest nicht jedes Mal das Terminal öffnen? Nutze den Watcher-Modus!
+Führe dazu einfach `./watch.sh` (Linux/macOS) oder `watch.bat` (Windows) aus. Das Skript überwacht nun im Hintergrund deinen Anschreiben-Ordner.
+
+1. Du speicherst ein neues Anschreiben als PDF aus Word/Pages in deinem Anschreiben-Ordner ab (z. B. `Anschreiben Telekom.pdf`).
+
+2. Der Watcher erkennt das Dokument, extrahiert den Firmennamen ("Telekom") und baut im Hintergrund in unter einer Sekunde die komplette Bewerbungsmappe zusammen.
+
+3. Automatisierung (Tipps):
+
+- **Linux/macOS**: Erstelle dir einen Alias in deiner `.bashrc` oder `.zshrc` (z. B. `alias bwg="cd /Pfad/zum/Projekt && ./watch.sh`"), um den Watcher bequem zu starten, oder richte einen Cronjob für den Systemstart ein (`@reboot`).
+
+- **Windows**: Füge eine Verknüpfung zu `watch.bat` im Ordner `Autostart` (`shell:startup`) hinzu oder nutze die Windows Aufgabenplanung (Task Scheduler), um das Skript bei jeder Benutzeranmeldung im Hintergrund zu starten.
+
 ## 🗄️ Datenbank-Tracking einrichten (Optional)
 
 Wenn du deine Bewerbungshistorie speichern möchtest, kannst du die PostgreSQL-Integration nutzen. 
@@ -84,7 +94,7 @@ Wenn du deine Bewerbungshistorie speichern möchtest, kannst du die PostgreSQL-I
    DB_PORT=5432
    DB_NAME=bewerbungen
    ```
-2. **Datenbank anlegen:** Stelle sicher, dass du auf deinem lokalen PostgreSQL-Server eine leere Datenbank namens `bewerbungen` erstellt hast. 
+2. **Feature aktivieren**: Setze in der `config.json` den Parameter `"use_database": true`. (Um das Feature zu deaktivieren, setze ihn auf `false`).
 3. **Nutzung:** Das Skript legt die Tabellen beim ersten Start automatisch an. Bei jeder erfolgreichen PDF-Generierung wird nun ein neuer Datensatz mit dem Status `APPLIED` gespeichert. Du kannst beim Ausführen optional die genaue Position übergeben: `./run.sh "Muster" -p "Fachinformatiker"`.
 
 ## 🛠️ Eigene Dokumente einrichten (`config.json`)
@@ -96,8 +106,8 @@ Um das Tool für deine echten Bewerbungen zu nutzen:
 
 ```json
 {
+  "use_database": false,
   "directories": {
-    "input_dir": "input",
     "base_docs": "input/base_docs",
     "anschreiben": "input/anschreiben",
     "output": "output"
@@ -108,9 +118,7 @@ Um das Tool für deine echten Bewerbungen zu nutzen:
   },
   "base_files": [
     "Lebenslauf.pdf",
-    "Arbeitszeugnis.pdf",
-    "Abschlusszeugnis.pdf",
-    "Zertifikat.pdf"
+    "Zertifikate.pdf"
   ]
 }
 ```
