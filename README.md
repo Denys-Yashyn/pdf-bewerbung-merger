@@ -37,7 +37,7 @@ pdf-bewerbung-merger/
 ├── watcher.py                # Hintergrund-Daemon für vollautomatischen Merge (Neu)
 ├── requirements.txt          # Python-Abhängigkeiten (pypdf, watchdog, sqlalchemy, psycopg2-binary)
 ├── run.sh / run.bat          # Starter-Skripte für manuellen Merge
-└── watch.sh / watch.bat      # Starter-Skripte für den Hintergrund-Watcher (Neu)
+└── watcher.sh / watcher.bat      # Starter-Skripte für den Hintergrund-Watcher (Neu)
 ```
 
 ## ⚙️ Voraussetzungen
@@ -70,7 +70,7 @@ Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf` und 
 
 ## 👁️ Automatischer Hintergrund-Modus (Watcher)
 Du möchtest nicht jedes Mal das Terminal öffnen? Nutze den Watcher-Modus!
-Führe dazu einfach `./watch.sh` (Linux/macOS) oder `watch.bat` (Windows) aus. Das Skript überwacht nun im Hintergrund deinen Anschreiben-Ordner.
+Führe dazu einfach `./watcher.sh` (Linux/macOS) oder `watcher.bat` (Windows) aus. Das Skript überwacht nun im Hintergrund deinen Anschreiben-Ordner.
 
 1. Du speicherst ein neues Anschreiben als PDF aus Word/Pages in deinem Anschreiben-Ordner ab (z. B. `Anschreiben Telekom.pdf`).
 
@@ -78,9 +78,9 @@ Führe dazu einfach `./watch.sh` (Linux/macOS) oder `watch.bat` (Windows) aus. D
 
 3. Automatisierung (Tipps):
 
-- **Linux/macOS**: Erstelle dir einen Alias in deiner `.bashrc` oder `.zshrc` (z. B. `alias bwg="cd /Pfad/zum/Projekt && ./watch.sh`"), um den Watcher bequem zu starten, oder richte einen Cronjob für den Systemstart ein (`@reboot`).
+- **Linux/macOS**: Erstelle dir einen Alias in deiner `.bashrc` oder `.zshrc` (z. B. `alias bwg="cd /Pfad/zum/Projekt && ./watcher.sh`"), um den Watcher bequem zu starten, oder richte einen Cronjob für den Systemstart ein (`@reboot`).
 
-- **Windows**: Füge eine Verknüpfung zu `watch.bat` im Ordner `Autostart` (`shell:startup`) hinzu oder nutze die Windows Aufgabenplanung (Task Scheduler), um das Skript bei jeder Benutzeranmeldung im Hintergrund zu starten.
+- **Windows**: Füge eine Verknüpfung zu `watcher.bat` im Ordner `Autostart` (`shell:startup`) hinzu oder nutze die Windows Aufgabenplanung (Task Scheduler), um das Skript bei jeder Benutzeranmeldung im Hintergrund zu starten.
 
 ## 🗄️ Datenbank-Tracking einrichten (Optional)
 
