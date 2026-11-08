@@ -7,7 +7,7 @@
   },
   "templates": {
     "anschreiben": "Anschreiben {company}.pdf",
-    "output_file": "Bewerbung {username} {company}.pdf"
+    "output_file": "Bewerbung MusterMann {company}.pdf"
   },
   "base_files": [
     "Lebenslauf Muster.pdf",
