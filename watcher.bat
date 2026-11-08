@@ -2,10 +2,15 @@
 echo 🔄 Starte PDF Bewerbung Watcher...
 
 IF NOT EXIST ".venv" (
-    echo ❌ Fehler: Virtuelle Umgebung (.venv) fehlt!
-    echo Bitte fuehre zuerst run.bat aus, um das Setup abzuscliessen.
-    pause
-    exit /b 1
+    echo ⚠️ Virtuelle Umgebung .venv fehlt. Starte automatisches Setup...
+    call run.bat "Setup"
+    
+    IF NOT EXIST ".venv" (
+        echo ❌ Fehler: Automatisches Setup fehlgeschlagen.
+        pause
+        exit /b 1
+    )
+    echo ✅ Setup erfolgreich abgeschlossen!
 )
 
 call .venv\Scripts\activate
