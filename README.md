@@ -20,7 +20,7 @@ Wer viele Bewerbungen schreibt, kennt das Problem: Für jede Firma muss ein indi
 * **100% Plattformübergreifend:** Funktioniert dank `pathlib` nahtlos unter Linux, macOS und Windows.
 * **Vollautomatisches Setup:** Mitgelieferte Start-Skripte (`run.sh` und `run.bat`) richten automatisch eine isolierte virtuelle Umgebung (`.venv`) ein und installieren alle benötigten Abhängigkeiten im Hintergrund.
 * **Out-of-the-Box Demo:** Enthält fertige Muster-Dokumente zum sofortigen Testen nach dem Klonen.
-* **Optionales Datenbank-Tracking (Neu):** Speichert automatisch den Firmennamen, die Position, das Datum und den Dateipfad deiner generierten Bewerbungen in einer PostgreSQL-Datenbank (via SQLAlchemy ORM).
+* **Optionales Datenbank-Tracking (Neu):** Speichert automatisch den Firmennamen, den Ort, die Position, das Datum und den Dateipfad deiner generierten Bewerbungen in einer PostgreSQL-Datenbank (via SQLAlchemy ORM).
 
 ## 📁 Projektstruktur
 
@@ -29,7 +29,7 @@ pdf-bewerbung-merger/
 ├── input/
 │   ├── anschreiben/          # Hierher kommen die Anschreiben (Standard-Watch-Ordner)
 │   └── base_docs/            # Statische Dokumente (Lebenslauf, Zeugnisse)
-├── output/                   # Hier landen die fertigen PDFs
+├── output/                   # Hier landen die fertigen PDFs (wird von Git ignoriert)
 ├── .env                      # Datenbank-Zugangsdaten (NICHT in Git hochladen!)
 ├── config.json               # Zentrale Konfiguration (Pfade, Dateinamen, DB-Toggle)
 ├── database.py               # Datenbankmodelle (SQLAlchemy) und Logik
@@ -64,7 +64,7 @@ pdf-bewerbung-merger/
      .\run.bat "Muster"
      ```
 
-Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf` und die DB-Treiber, fügt die Muster-Dokumente zusammen und speichert das Ergebnis unter `output/Bewerbung_<DeinSystemname>_Muster.pdf`.
+Das Skript erstellt automatisch die virtuelle Umgebung, installiert `pypdf` und die DB-Treiber, fügt die Muster-Dokumente zusammen und speichert das Ergebnis unter `output/Bewerbung MusterMann Muster.pdf`.
 
 *(Hinweis: Wenn der Firmenname Leerzeichen enthält, setze ihn einfach in Anführungszeichen, z. B. `./run.sh "Deutsche Bahn"`).*
 
@@ -74,11 +74,11 @@ Führe dazu einfach `./watcher.sh` (Linux/macOS) oder `watcher.bat` (Windows) au
 
 1. Du speicherst ein neues Anschreiben als PDF aus Word/Pages in deinem Anschreiben-Ordner ab (z. B. `Anschreiben Telekom.pdf`).
 
-2. Der Watcher erkennt das Dokument, extrahiert den Firmennamen ("Telekom") und baut im Hintergrund in unter einer Sekunde die komplette Bewerbungsmappe zusammen.
+2. Der Watcher erkennt das Dokument, extrahiert den Firmennamen ("Telekom") anhand der Vorlage `templates.anschreiben` aus der `config.json` und baut im Hintergrund die komplette Bewerbungsmappe zusammen. Dateien, die nicht zur Vorlage passen, werden ignoriert.
 
 3. Automatisierung (Tipps):
 
-- **Linux/macOS**: Erstelle dir einen Alias in deiner `.bashrc` oder `.zshrc` (z. B. `alias bwg="cd /Pfad/zum/Projekt && ./watcher.sh`"), um den Watcher bequem zu starten, oder richte einen Cronjob für den Systemstart ein (`@reboot`).
+- **Linux/macOS**: Erstelle dir einen Alias in deiner `.bashrc` oder `.zshrc` (z. B. `alias bwg="/Pfad/zum/Projekt/watcher.sh"`), um den Watcher bequem zu starten, oder richte einen Cronjob für den Systemstart ein (`@reboot`).
 
 - **Windows**: Füge eine Verknüpfung zu `watcher.bat` im Ordner `Autostart` (`shell:startup`) hinzu oder nutze die Windows Aufgabenplanung (Task Scheduler), um das Skript bei jeder Benutzeranmeldung im Hintergrund zu starten.
 
@@ -95,7 +95,10 @@ Wenn du deine Bewerbungshistorie speichern möchtest, kannst du die PostgreSQL-I
    DB_NAME=bewerbungen
    ```
 2. **Feature aktivieren**: Setze in der `config.json` den Parameter `"use_database": true`. (Um das Feature zu deaktivieren, setze ihn auf `false`).
-3. **Nutzung:** Das Skript legt die Tabellen beim ersten Start automatisch an. Bei jeder erfolgreichen PDF-Generierung wird nun ein neuer Datensatz mit dem Status `APPLIED` gespeichert. Du kannst beim Ausführen optional die genaue Position übergeben: `./run.sh "Muster" -p "Fachinformatiker"`.
+3. **Nutzung:** Das Skript legt die Tabellen beim ersten Start automatisch an. Bei jeder erfolgreichen PDF-Generierung wird ein Datensatz mit dem Status `APPLIED` gespeichert. Existiert bereits eine Bewerbung mit gleichem Unternehmen, Ort und Position, wird sie aktualisiert statt doppelt angelegt. Optional kannst du Position, Ort und eine Notiz (z. B. den Link zur Stellenanzeige) übergeben:
+   ```bash
+   ./run.sh "Muster" -p "Fachinformatiker" -c "Erfurt" -n "https://example.com/stellenanzeige"
+   ```
 
 ## 🛠️ Eigene Dokumente einrichten (`config.json`)
 
@@ -123,8 +126,9 @@ Um das Tool für deine echten Bewerbungen zu nutzen:
 }
 ```
 * **Platzhalter `{company}`:** Wird durch das Argument ersetzt, das du im Terminal übergibst.
+* **Platzhalter `{city}` (optional):** Wird durch den Ort aus `-c` ersetzt, z. B. `"Anschreiben_{company}_{city}.pdf"`. Der Watcher liest Firma und Ort dann direkt aus dem Dateinamen (der Ort darf dabei keinen Unterstrich enthalten).
 * **Platzhalter `{username}`:** Wird automatisch durch deinen aktuellen Systembenutzernamen ersetzt (kann in der `config.json` auch fest durch deinen echten Namen wie `"Max Mustermann"` überschrieben werden).
-* * **Eigene Ordnerpfade (`directories`):** Du musst deine Dokumente nicht zwingend im Projektordner aufbewahren. In der `config.json` können problemlos auch **absolute Pfade** angegeben werden, um Dateien z. B. direkt aus deinem System-Dokumentenordner zu laden oder dort zu speichern:
+* **Eigene Ordnerpfade (`directories`):** Du musst deine Dokumente nicht zwingend im Projektordner aufbewahren. In der `config.json` können problemlos auch **absolute Pfade** angegeben werden, um Dateien z. B. direkt aus deinem System-Dokumentenordner zu laden oder dort zu speichern:
   * **Linux / macOS:** `"/home/user/Documents/Bewerbungen/base_docs"`
   * **Windows:** `"C:/Users/Muster/Documents/Bewerbungen/base_docs"` *(Hinweis: Verwende in der JSON-Datei normale Schrägstriche `/` oder doppelte Backslashes `\\`)*.
 

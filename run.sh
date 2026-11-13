@@ -1,13 +1,13 @@
 #!/bin/bash
+set -e
+cd "$(dirname "$0")"
 
 # Prüfen, ob der Firmenname als Argument übergeben wurde
 if [ -z "$1" ]; then
     echo "❌ Fehler: Firmenname wurde nicht angegeben!"
-    echo "💡 Verwendung: ./run.sh \"Firmenname\""
+    echo "💡 Verwendung: ./run.sh \"Firmenname\" [-p Position] [-c Ort] [-n Notiz]"
     exit 1
 fi
-
-COMPANY_NAME="$1"
 
 # Virtuelle Umgebung erstellen, falls nicht vorhanden
 if [ ! -d ".venv" ]; then
@@ -15,17 +15,12 @@ if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi
 
-# Virtuelle Umgebung aktivieren
-source .venv/bin/activate
+# Abhängigkeiten nur installieren, wenn sich requirements.txt geändert hat
+if [ requirements.txt -nt .venv/.deps-installed ]; then
+    echo "📦 Abhängigkeiten aus requirements.txt werden installiert..."
+    .venv/bin/pip install -q -r requirements.txt
+    touch .venv/.deps-installed
+fi
 
-# Abhängigkeiten installieren (im stillen Modus)
-echo "📦 Abhängigkeiten aus requirements.txt werden installiert..."
-pip install --upgrade pip -q
-pip install -r requirements.txt -q
-
-# Das Python-Skript ausführen
 echo "🚀 PDF wird generiert..."
-python3 main.py "$COMPANY_NAME"
-
-# Virtuelle Umgebung deaktivieren
-deactivate
+.venv/bin/python main.py "$@"

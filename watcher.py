@@ -1,61 +1,96 @@
-import time
+import re
 import subprocess
 import sys
-import json
+import time
 from pathlib import Path
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 
-def load_config(config_path="config.json"):
-    """Lädt die Konfigurationsdatei."""
-    try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f"❌ Fehler: {config_path} nicht gefunden!")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"❌ Fehler: {config_path} ist fehlerhaft formatiert!")
-        sys.exit(1)
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+from main import fill_template, load_config
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def build_filename_pattern(template: str) -> re.Pattern:
+    """Turn the Anschreiben filename template from config.json into a regex.
+
+    With a template like "Anschreiben_{company}_{city}.pdf" the company may contain
+    underscores, the city may not: Anschreiben_Foo_Bar_Ulm.pdf -> "Foo_Bar", "Ulm".
+    """
+    pattern = re.escape(fill_template(template, "{company}", "{city}"))
+    pattern = pattern.replace(r"\{company\}", r"(?P<company>.+)")
+    pattern = pattern.replace(r"\{city\}", r"(?P<city>[^_]+)")
+    return re.compile(pattern, re.IGNORECASE)
+
+
+def wait_until_written(path: Path, timeout: float = 30.0) -> bool:
+    """Wait until the file size stops changing, i.e. the writer has finished saving."""
+    deadline = time.monotonic() + timeout
+    last_size = -1
+    while time.monotonic() < deadline:
+        try:
+            size = path.stat().st_size
+        except FileNotFoundError:
+            return False
+        if size > 0 and size == last_size:
+            return True
+        last_size = size
+        time.sleep(0.5)
+    return False
+
 
 class AnschreibenHandler(FileSystemEventHandler):
+    def __init__(self, pattern: re.Pattern):
+        self.pattern = pattern
+
     def on_created(self, event):
-        # Реагируем только на создание новых файлов с расширением .pdf
-        if not event.is_directory and event.src_path.lower().endswith('.pdf'):
-            file_path = Path(event.src_path)
-            print(f"\n📄 Neues Dokument erkannt: {file_path.name}")
-            
-            # Извлекаем имя компании
-            company_name = file_path.stem.replace("Anschreiben", "").strip(" _-")
-            
-            if company_name:
-                print(f"🚀 Starte Bewerbungs-Build für: {company_name}")
-                try:
-                    subprocess.run([sys.executable, "main.py", company_name], check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"❌ Fehler beim Erstellen der PDF: {e}")
-            else:
-                print("⚠️ Firmenname konnte aus dem Dateinamen nicht ermittelt werden.")
+        self._handle(event.is_directory, event.src_path)
+
+    def on_moved(self, event):
+        # Many programs save to a temp file and rename it afterwards
+        self._handle(event.is_directory, event.dest_path)
+
+    def _handle(self, is_directory: bool, path: str) -> None:
+        file_path = Path(path)
+        if is_directory or file_path.suffix.lower() != ".pdf":
+            return
+
+        print(f"\n📄 Neues Dokument erkannt: {file_path.name}")
+        match = self.pattern.fullmatch(file_path.name)
+        if not match:
+            print("⚠️ Dateiname entspricht nicht der Vorlage 'templates.anschreiben' aus config.json.")
+            return
+        if not wait_until_written(file_path):
+            print("⚠️ Datei wurde nicht vollständig geschrieben, übersprungen.")
+            return
+
+        command = [sys.executable, str(SCRIPT_DIR / "main.py"), match["company"]]
+        city = match.groupdict().get("city")
+        if city:
+            command += ["-c", city]
+
+        print(f"🚀 Starte Bewerbungs-Build für: {match['company']}")
+        try:
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Fehler beim Erstellen der PDF: {e}")
+
 
 if __name__ == "__main__":
-    # 1. Читаем конфиг
-    config = load_config()
-    
-    # 2. Достаем путь к папке Anschreiben (с фоллбэком на дефолтный путь)
-    watch_directory = config.get("directories", {}).get("anschreiben", "input/anschreiben")
-    
-    # 3. Убедимся, что папка существует
-    Path(watch_directory).mkdir(parents=True, exist_ok=True)
-    
-    event_handler = AnschreibenHandler()
+    config = load_config(SCRIPT_DIR / "config.json")
+    watch_directory = (SCRIPT_DIR / config["directories"]["anschreiben"]).resolve()
+    watch_directory.mkdir(parents=True, exist_ok=True)
+
     observer = Observer()
-    
-    # Настраиваем наблюдателя
-    observer.schedule(event_handler, watch_directory, recursive=False)
-    
+    observer.schedule(
+        AnschreibenHandler(build_filename_pattern(config["templates"]["anschreiben"])),
+        str(watch_directory),
+        recursive=False,
+    )
+
     print(f"👀 Beobachte Ordner '{watch_directory}' aus config.json... (Abbruch mit Ctrl+C)")
     observer.start()
-    
     try:
         while True:
             time.sleep(1)
